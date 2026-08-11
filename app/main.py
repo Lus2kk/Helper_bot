@@ -8,8 +8,6 @@ from app.config import settings
 from app.routes.routes import setup_routes
 
 
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     webhook_path = f"/webhook/{settings.tg_bot_token.get_secret_value()}"

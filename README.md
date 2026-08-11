@@ -23,7 +23,8 @@
 ```
 app/
   bot/           # инициализация Bot и Dispatcher
-  handler/       # хендлеры Telegram-команд
+  handler/       # хендлеры Telegram-команд и событий
+  keyboards/     # определение клавиатур (Reply/Inline)
   service/       # бизнес-логика фичей
   repository/    # (план) запросы к БД
   external/      # HTTP-клиенты к внешним API
@@ -37,7 +38,7 @@ pyproject.toml   # зависимости и конфиги инструмент
 docker-compose.yml
 ```
 
-**Принцип**: `handler` → `service` → `external` (внешние API) / `repository` (БД). Handler не лезет в внешние API напрямую, service не знает про Telegram.
+**Принцип**: `handler` → `service` → `external` (внешние API) / `repository` (БД). Handler не лезет в внешние API напрямую, service не знает про Telegram. Клавиатуры вынесены в отдельный модуль, handler содержит только обработчики событий.
 
 ## Внешние API
 
@@ -51,10 +52,11 @@ docker-compose.yml
 - [x] SQLAlchemy-модели: `User`, `Task`
 - [x] Alembic-миграции
 - [x] Каркас бота: webhook-эндпоинт на FastAPI, `/health`
-- [x] Команда `/start` (welcome-сообщение)
+- [x] Команда `/start` (welcome-сообщение + главное меню кнопок)
 - [x] Команда `/help`
-- [x] Фича **Погода**: `/weather` → кнопка запроса геолокации → погода по координатам
-- [x] Фича **Новости**: `/news` → inline-кнопки выбора категории → новость с обложкой +engine
+- [x] Главное меню (Reply-кнопки: Погода, Новости, Мои задачи, Помощь)
+- [x] Фича **Погода**: `/weather` или кнопка → запрос геолокации → погода по координатам
+- [x] Фича **Новости**: `/news` или кнопка → inline-кнопки выбора категории → новость с обложкой + список
 
 ## В планах
 

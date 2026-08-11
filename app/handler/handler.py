@@ -1,85 +1,78 @@
 from pathlib import Path
+from aiogram import F
 from aiogram.filters import CommandStart, Command
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, CallbackQuery
+from aiogram.types import Message, CallbackQuery
 from app.bot.bot import bot, dp
-from app.external.weather_client import WeatherClient
 from app.external.news_client import NewsClient
-from app.service.weather_service import WeatherService
+from app.external.weather_client import WeatherClient
+from app.keyboards.keyboards import (
+    NEWS_TOPICS,
+    location_keyboard,
+    main_keyboard,
+    news_keyboard,
+)
 from app.service.news_service import NewsService
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from app.service.weather_service import WeatherService
 
 
+# конструкторы сервиса
 weather_service = WeatherService(WeatherClient())
 news_service = NewsService(NewsClient())
 
 
+# приветственный текст для команды /start 
 welcome_text = (Path(__file__).parent.parent / "bot" / "text" / "welcome.txt").read_text(encoding="utf-8")
-
-
+# ручка для /start - возвращает текст выше
 @dp.message(CommandStart())
 async def start_command_handler(message: Message):
-    await message.answer(welcome_text)
+    await message.answer(welcome_text, reply_markup=main_keyboard)
 
+
+# ручка для помощи пользователю, при нажатии кнопки вылетает текст из help.txt 
+# который обьясняет пользователю команды бота 
 help_text = (Path(__file__).parent.parent / "bot" / "text" / "help.txt").read_text(encoding="utf-8")
-
-
-@dp.message(Command("help"))
+@dp.message(F.text == "Помощь")
 async def help_command_handler(message: Message):
     await message.answer(help_text)
 
 
-location_keyboard = ReplyKeyboardMarkup(
-    keyboard=[[KeyboardButton(text="Поделиться геолокацией", request_location=True)]],
-    resize_keyboard=True,
-)
-
-
-@dp.message(Command("weather"))
-async def weather_command_handler(message: Message):
+# обработчик нажатия кнопки "Погода" (из главного меню)
+# при нажатии кнопки "Погода" отправляется запрос на получение геолокации пользователя 
+# логика этого запроса прописана в следующей функции 
+@dp.message(F.text == "Погода")
+async def weather_button_handler(message: Message):
     await message.answer(
         "Для того чтобы я мог сказать тебе погоду в твоей точке, мне надо твоя геолокация",
         reply_markup=location_keyboard,
     )
 
-
+# ручка на получение погоды через Open-meteo
+# после получения координат геолокации формируется запрос в Open-meteo 
+# для получения погоды в месте геолокации 
+# важно учесть что использование геолокации идет строго через Telegram 
 @dp.message(lambda m: m.location is not None)
 async def location_handler(message: Message):
     lat = message.location.latitude
     lon = message.location.longitude
     try:
         text = await weather_service.get_weather_service(lat=lat, lon=lon)
-        await message.answer(text, reply_markup=ReplyKeyboardRemove())
+        await message.answer(text, reply_markup=main_keyboard)
     except Exception:
         await message.answer(
             "Не удалось получить погоду. Попробуй позже.",
-            reply_markup=ReplyKeyboardRemove(),
+            reply_markup=main_keyboard,
         )
 
 
-NEWS_TOPICS = {
-    "sports": "Спорт",
-    "technology": "Технологии",
-    "entertainment": "Кино",
-    "business": "Бизнес",
-    "science": "Наука",
-    "world": "Мир",
-    "health": "Здоровье",
-}
-
-
-def news_keyboard():
-    builder = InlineKeyboardBuilder()
-    for topic_key, topic_label in NEWS_TOPICS.items():
-        builder.button(text=topic_label, callback_data=f"news:{topic_key}")
-    builder.adjust(2)
-    return builder.as_markup()
-
-
-@dp.message(Command("news"))
-async def news_command_handler(message: Message):
+# обработчик нажатия кнопки "Новости"
+# при нажатии кнопки вызывается дополнитклное окно с категориями новостей
+# после чего формируется запрос в GNews исходя их query-параметра топика новостей 
+# выбранного пользователем 
+@dp.message(F.text == "Новости")
+async def news_button_handler(message: Message):
     await message.answer("Выбери тему новостей:", reply_markup=news_keyboard())
 
-
+# обработчик нажатия на inline-кнопку категории новостей
 @dp.callback_query(lambda c: c.data and c.data.startswith("news:"))
 async def news_callback_handler(callback: CallbackQuery):
     topic = callback.data.split(":")[1]
@@ -108,7 +101,14 @@ async def news_callback_handler(callback: CallbackQuery):
         if rest:
             await callback.message.answer(f"Ещё новости:\n\n{rest}")
     except Exception:
-        await callback.message.answer("Не удалось получить новости. Попробуй позже.")
+        await callback.message.answer("Не удалось получить новости. Попробуйте позже.")
 
 
-#
+
+ # обработчик нажатия кнопки "Мои задачи" (из главного меню) — пока заглушка
+@dp.message(F.text == "Мои задачи")
+async def tasks_button_handler(message: Message):
+    await message.answer("Менеджер задач в разработке 🚧")
+
+
+
