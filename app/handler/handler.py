@@ -57,9 +57,9 @@ async def location_handler(message: Message):
     try:
         text = await weather_service.get_weather_service(lat=lat, lon=lon)
         await message.answer(text, reply_markup=main_keyboard)
-    except Exception as e:
+    except Exception:
         await message.answer(
-            f"Не удалось получить погоду. Ошибка: {repr(e)}",
+            "Не удалось получить погоду. Попробуй позже.",
             reply_markup=main_keyboard,
         )
 
